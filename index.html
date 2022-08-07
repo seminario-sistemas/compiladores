@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Compilador | 👨‍💻</title>
+        <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap" rel="stylesheet" />
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/github.min.css" rel="stylesheet" />
+        <link href="./assets/plugins/css/bootstrap.min.css" rel="stylesheet" />
+        <link rel="stylesheet" href="./assets/plugins/css/dracula.css" />
+        <link rel="stylesheet" href="./assets/styles.css" />
+        <link rel="shortcut icon" href="favicon.png" type="image/x-icon" />
+    </head>
+    <body>
+        <div class="container">
+            <div class="row">
+                <div class="col-6">
+                    <div class="editor-container">
+                        <span class="fs-5 text-light text-center">Programa de entrada</span>
+                        <button class="btn btn-dark mx-5 mb-2" onclick="limpiar(1)">Limpiar</button>
+                        <div id="editor" class="editor language-js"></div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="editor-container">
+                        <span class="fs-5 text-light text-center">Resultados de Análisis</span>
+                        <button class="btn btn-dark mx-5 mb-2" onclick="limpiar(0)">Limpiar</button>
+                        <div id="visualizacion" class="editor language-js"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <button class="btn btn-dark" id="cargar">Cargar Archivo</button>
+                    <input type="file" accept=".txt,.js" name="archivo" id="archivo" hidden />
+                    <button class="btn btn-dark" id="mostrarCaracteres">Mostrar Caracteres</button>
+                    <button class="btn btn-dark" id="flujo">Flujo de Carcateres</button>
+                </div>
+            </div>
+        </div>
+        <script type="module" src="./assets/init.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js"></script>
+        <script src="./assets/plugins/js/bootstrap.bundle.min.js"></script>
+        <script src="./assets/script.js"></script>
+    </body>
+</html>
