@@ -1,4 +1,5 @@
 const cargar = document.getElementById('cargar')
+const seleccionar = document.getElementById('seleccionar')
 const archivo = document.getElementById('archivo')
 const mostrarCaracteres = document.getElementById('mostrarCaracteres')
 const flujo = document.getElementById('flujo')
@@ -7,10 +8,19 @@ cargar.addEventListener('click', () => {
     archivo.click()
 })
 
+seleccionar.addEventListener('click', () => {
+    if (window.jar.toString().trim() === '') return alert('No es posible seleccionar archivos si no se ha seleccionado ninguno anterior mente')
+    archivo.click()
+})
+
 archivo.addEventListener('change', function () {
     var fr = new FileReader()
     fr.onload = function () {
-        window.jar.updateCode(fr.result)
+        if (fr.result.trim() === '') return alert('El archivo está vacío')
+        const codigoNuevo = `${window.jar.toString() == '' ? '' : window.jar.toString() + '\n'}${fr.result}`
+        console.log(codigoNuevo)
+        window.jar.updateCode(codigoNuevo)
+        archivo.value = ''
     }
     fr.readAsText(this.files[0])
 })
@@ -42,10 +52,19 @@ function obtenerNombreCaracter(caracter) {
 }
 
 function mostrarFlujoCaracteres(texto) {
-    let flujo = ''
     caracteresEspeciales = ['\n', '\t', ' ']
     for (var i = 0; i < texto.length; i++) {
-        alert(`${caracteresEspeciales.includes(texto.charAt(i)) ? obtenerNombreCaracter(texto.charAt(i)) : texto.charAt(i)}\n`)
+        const caracter = texto.charAt(i)
+        if (!caracteresEspeciales.includes(caracter)) {
+            if (confirm(caracter)) continue
+            break
+        }
+        if (caracter != '\n') {
+            if (confirm(obtenerNombreCaracter(caracter))) continue
+            break
+        }
+        alert(`Fin de línea, ASCII Code: ${'\r'.charCodeAt()}`)
+        if (confirm(`Salto de línea, ASCII Code: ${caracter.charCodeAt()}`)) break
     }
 }
 
