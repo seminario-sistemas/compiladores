@@ -6,6 +6,13 @@ const flujo = document.getElementById('flujo')
 const lineaColumnas = document.getElementById('lineaColumnas')
 
 cargar.addEventListener('click', () => {
+    if (window.jar.toString().trim() !== '') {
+        if (confirm('¿Desea sobreescribir el código actual?')) {
+            window.jar.updateCode('')
+            return archivo.click()
+        }
+        return
+    }
     archivo.click()
 })
 
@@ -18,7 +25,7 @@ archivo.addEventListener('change', function () {
     var fr = new FileReader()
     fr.onload = function () {
         if (fr.result.trim() === '') return alert('El archivo está vacío')
-        const codigoNuevo = `${window.jar.toString() == '' ? '' : window.jar.toString() + '\n'}${fr.result}`
+        const codigoNuevo = `${window.jar.toString() == '' ? '' : window.jar.toString().trim() + '\n'}${fr.result}`
         console.log(codigoNuevo)
         window.jar.updateCode(codigoNuevo)
         archivo.value = ''
@@ -97,18 +104,31 @@ function obtenerNombreCaracter(caracter) {
 
 function mostrarFlujoCaracteres(texto) {
     caracteresEspeciales = ['\n', '\t', ' ', '.', '(', ')', '{', '}', "'", '"', '[', ']', ',']
-    for (var i = 0; i < texto.length; i++) {
-        const caracter = texto.charAt(i)
-        if (!caracteresEspeciales.includes(caracter)) {
-            if (confirm(caracter)) continue
-            break
+    const lineas = texto.split('\n')
+    for (let j = 0; j < lineas.length; j++) {
+        const numeroLinea = j + 1
+        let numeroColumna = 0
+        let tabs = 0
+        const linea = lineas[j]
+        for (var i = 0; i < linea.length; i++) {
+            numeroColumna = i + 1
+            const caracter = linea.charAt(i)
+            if (caracter == '\t') {
+                tabs++
+            }
+            if (caracter !== '\n') {
+                if (
+                    !confirm(
+                        `${caracteresEspeciales.includes(caracter) ? obtenerNombreCaracter(caracter) : caracter}  Línea: ${numeroLinea} Columna: ${
+                            tabs != 0 ? numeroColumna + 4 * tabs : numeroColumna
+                        }\n`
+                    )
+                )
+                    break
+            }
         }
-        if (caracter != '\n') {
-            if (confirm(obtenerNombreCaracter(caracter))) continue
-            break
-        }
-        alert(`Fin de línea, ASCII Code: ${'\r'.charCodeAt()}`)
-        if (confirm(`Salto de línea, ASCII Code: ${caracter.charCodeAt()}`)) break
+        if (!confirm(`Fin de línea, ASCII Code: ${'\r'.charCodeAt()}  Línea: ${numeroLinea} Columna: ${linea.length + 1 + 4 * tabs}`)) break
+        if (!confirm(`Salto de línea, ASCII Code: ${'\n'.charCodeAt()}  Línea: ${numeroLinea} Columna: ${linea.length + 4 * tabs + 2}`)) break
     }
 }
 
