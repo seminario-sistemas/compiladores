@@ -3,6 +3,7 @@ const seleccionar = document.getElementById('seleccionar')
 const archivo = document.getElementById('archivo')
 const mostrarCaracteres = document.getElementById('mostrarCaracteres')
 const flujo = document.getElementById('flujo')
+const lineaColumnas = document.getElementById('lineaColumnas')
 
 cargar.addEventListener('click', () => {
     archivo.click()
@@ -30,6 +31,11 @@ flujo.addEventListener('click', () => {
     window.visualizacionJar.updateCode(obtenerFlujoCaracteres(codigo))
 })
 
+lineaColumnas.addEventListener('click', () => {
+    const codigo = window.jar.toString()
+    window.visualizacionJar.updateCode(obtenerFlujoCaracteresLineaColumna(codigo))
+})
+
 mostrarCaracteres.addEventListener('click', () => {
     const codigo = window.jar.toString()
     mostrarFlujoCaracteres(codigo)
@@ -37,7 +43,7 @@ mostrarCaracteres.addEventListener('click', () => {
 
 function obtenerFlujoCaracteres(texto) {
     let flujo = ''
-    caracteresEspeciales = ['\n', '\t', ' ']
+    caracteresEspeciales = ['\n', '\t', ' ', '.', '(', ')', '{', '}', "'", '"', '[', ']', ',']
 
     for (var i = 0; i < texto.length; i++) {
         flujo += `${caracteresEspeciales.includes(texto.charAt(i)) ? obtenerNombreCaracter(texto.charAt(i)) : texto.charAt(i)}\n`
@@ -45,14 +51,52 @@ function obtenerFlujoCaracteres(texto) {
     return flujo
 }
 
+function obtenerFlujoCaracteresLineaColumna(texto) {
+    let flujo = ''
+    caracteresEspeciales = ['\n', '\t', ' ', '.', '(', ')', '{', '}', "'", '"', '[', ']', ',']
+    const lineas = texto.split('\n')
+    lineas.forEach((linea, indice) => {
+        const numeroLinea = indice + 1
+        let numeroColumna = 0
+        let tabs = 0
+        for (var i = 0; i < linea.length; i++) {
+            numeroColumna = i + 1
+            const caracter = linea.charAt(i)
+            if (caracter == '\t') {
+                tabs++
+            }
+            if (caracter !== '\n') {
+                flujo += `${caracteresEspeciales.includes(caracter) ? obtenerNombreCaracter(caracter) : caracter}  Línea: ${numeroLinea} Columna: ${
+                    tabs != 0 ? numeroColumna + 4 * tabs : numeroColumna
+                }\n`
+                continue
+            }
+        }
+        flujo += `Fin de línea, ASCII Code: ${'\r'.charCodeAt()}  Línea: ${numeroLinea} Columna: ${
+            linea.length + 1 + 4 * tabs
+        } \nSalto de línea, ASCII Code: ${'\n'.charCodeAt()}  Línea: ${numeroLinea} Columna: ${linea.length + 4 * tabs + 2}\n`
+    })
+    return flujo
+}
+
 function obtenerNombreCaracter(caracter) {
     if (caracter == '\n') return `Fin de línea, ASCII Code: ${'\r'.charCodeAt()} \nSalto de línea, ASCII Code: ${caracter.charCodeAt()}`
     if (caracter == '\t') return `Tabulador, ASCII Code: ${caracter.charCodeAt()}`
-    if (caracter == ' ') return `Espacio en blanco, ASCII Code: ${caracter.charCodeAt()}`
+    if (caracter == ' ') return `${caracter} - Espacio en blanco - ASCII Code: ${caracter.charCodeAt()}`
+    if (caracter == '.') return `${caracter} - Punto - ASCII Code: ${caracter.charCodeAt()}`
+    if (caracter == ',') return `${caracter} - Coma - ASCII Code: ${caracter.charCodeAt()}`
+    if (caracter == '(') return `${caracter} - Paréntesis abierto - ASCII Code: ${caracter.charCodeAt()}`
+    if (caracter == ')') return `${caracter} - Paréntesis cerrado - ASCII Code: ${caracter.charCodeAt()}`
+    if (caracter == '{') return `${caracter} - Llave abierta - ASCII Code: ${caracter.charCodeAt()}`
+    if (caracter == '}') return `${caracter} - Llave cerrada - ASCII Code: ${caracter.charCodeAt()}`
+    if (caracter == "'") return `${caracter} - Comilla simple - ASCII Code: ${caracter.charCodeAt()}`
+    if (caracter == '"') return `${caracter} - Comilla doble - ASCII Code: ${caracter.charCodeAt()}`
+    if (caracter == '[') return `${caracter} - Corchete abierto - ASCII Code: ${caracter.charCodeAt()}`
+    if (caracter == ']') return `${caracter} - Corchete cerrado - ASCII Code: ${caracter.charCodeAt()}`
 }
 
 function mostrarFlujoCaracteres(texto) {
-    caracteresEspeciales = ['\n', '\t', ' ']
+    caracteresEspeciales = ['\n', '\t', ' ', '.', '(', ')', '{', '}', "'", '"', '[', ']', ',']
     for (var i = 0; i < texto.length; i++) {
         const caracter = texto.charAt(i)
         if (!caracteresEspeciales.includes(caracter)) {
