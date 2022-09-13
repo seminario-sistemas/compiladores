@@ -4,6 +4,119 @@ const archivo = document.getElementById('archivo')
 const mostrarCaracteres = document.getElementById('mostrarCaracteres')
 const flujo = document.getElementById('flujo')
 const lineaColumnas = document.getElementById('lineaColumnas')
+const gridContainer = document.getElementById('gridContainer')
+const paginationContainer = document.getElementById('paginationContainer')
+const editarPalabra = document.getElementById('editarPalabra')
+const agregarPalabra = document.getElementById('agregarPalabra')
+
+const base_url = 'http://localhost:3000'
+const grid = {
+    obtenerDatos: async function (offset, limit) {
+        const params = {
+            offset,
+            limit,
+            order: 'id_palabra_reservada',
+            orderType: 'asc',
+        }
+        const res = await llamarApi('POST', `${base_url}/obtenerPalabras`, params)
+        this.cantidadRegistros = res.totalCount
+        return res.data
+    },
+    init: async function () {
+        this.datos = await this.obtenerDatos(this.offset, this.limit)
+        this.renderizar(this.datos)
+        this.renderizarPaginacion()
+    },
+    renderizar: function (palabras) {
+        let tablaPalabras = `<table class="table table-hover">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th width="80%">Palabra</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>`
+        for (const palabra of palabras) {
+            tablaPalabras += `<tr>
+                <th scope="row">${palabra.id_palabra_reservada}</th>
+                <td width="80%">${palabra.palabra_reservada}</td>
+                <td>
+                    <button class="btn btn-light" onclick="mostrarEdicion(${palabra.id_palabra_reservada}, '${palabra.palabra_reservada}')"><i class="bi bi-pencil-square" tooltip="Editar"></i></button>
+                    <button class="btn btn-light" onclick="confirmarEliminacion(${palabra.id_palabra_reservada})"><i class="bi bi-trash" tooltip="Eliminar"></i></button>
+                </td>
+            </tr>`
+        }
+        tablaPalabras += '</tbody></table>'
+        gridContainer.innerHTML = tablaPalabras
+    },
+    renderizarPaginacion: function () {
+        let html = ``
+        const paginasDecimal = this.cantidadRegistros / this.limit
+        if (Number.isInteger(paginasDecimal)) this.paginas = paginasDecimal
+        this.paginas = paginasDecimal != 1 ? parseInt(paginasDecimal) + 1 : paginasDecimal
+
+        const anterior = this.paginaActual !== 1
+        const siguiente = this.paginaActual !== this.paginas
+
+        html += anterior
+            ? `<button type="button" class="btn btn-light" onclick="grid.anterior()">Anterior</button>`
+            : `<button type="button" class="btn btn-light">Anterior</button>`
+
+        for (let i = 1; i <= this.paginas; i++) {
+            html += `<button type="button" class="btn btn-light ${this.paginaActual == i ? 'active' : ''}" onclick="grid.paginar(${i})">${i}</button>`
+        }
+
+        html += siguiente
+            ? `<button type="button" class="btn btn-light" onclick="grid.siguiente()">Siguiente</button>`
+            : `<button type="button" class="btn btn-light">Siguiente</button>`
+
+        paginationContainer.innerHTML = html
+    },
+    anterior: async function () {
+        if (this.paginaActual == 1) return
+        this.paginaActual = this.paginaActual - 1
+        this.offset = this.offset - this.limit
+        this.renderizar(await this.obtenerDatos(this.offset, this.limit))
+        this.renderizarPaginacion()
+    },
+    siguiente: async function () {
+        if (this.paginaActual == this.paginas) return
+        this.paginaActual = this.paginaActual + 1
+        this.offset = this.offset + this.limit
+        this.renderizar(await this.obtenerDatos(this.offset, this.limit))
+        this.renderizarPaginacion()
+    },
+    paginar: async function (pagina) {
+        if (pagina == this.paginaActual || pagina > this.paginas || pagina < 1) return
+        this.paginaActual = pagina
+        this.offset = (pagina - 1) * this.limit
+        this.renderizar(await this.obtenerDatos(this.offset, this.limit))
+        this.renderizarPaginacion()
+    },
+    agregar: async function (palabra) {
+        const res = await llamarApi('POST', `${base_url}/palabras`, { palabra })
+        this.paginar(this.paginas)
+    },
+    eliminar: async function (id) {
+        const res = await llamarApi('DELETE', `${base_url}/palabras/${id}`)
+        alert(res.message)
+        this.renderizar(await this.obtenerDatos(this.offset, this.limit))
+        this.renderizarPaginacion()
+    },
+    editar: async function (id, palabra) {
+        const res = await llamarApi('PUT', `${base_url}/palabras/${id}`, { palabra })
+        alert(res.message)
+        this.renderizar(await this.obtenerDatos(this.offset, this.limit))
+        this.renderizarPaginacion()
+    },
+    cantidadRegistros: 0,
+    datos: [],
+    paginaActual: 1,
+    paginas: 1,
+    limit: 10,
+    offset: 0,
+}
 
 cargar.addEventListener('click', () => {
     if (window.jar.toString().trim() !== '') {
@@ -46,6 +159,23 @@ lineaColumnas.addEventListener('click', () => {
 mostrarCaracteres.addEventListener('click', () => {
     const codigo = window.jar.toString()
     mostrarFlujoCaracteres(codigo)
+})
+
+editarPalabra.addEventListener('click', () => {
+    const palabra = document.getElementById('palabraEdicion')
+    const palabraId = document.getElementById('idPalabra')
+    grid.editar(palabraId.value, palabra.value)
+    obtenerModal('edicion').hide()
+    obtenerModal('mantenimientoPalabras').show()
+    grid.init()
+})
+
+agregarPalabra.addEventListener('click', () => {
+    const palabra = document.getElementById('palabra')
+    grid.agregar(palabra.value)
+    obtenerModal('creacion').hide()
+    obtenerModal('mantenimientoPalabras').show()
+    grid.init()
 })
 
 function obtenerFlujoCaracteres(texto) {
@@ -135,4 +265,41 @@ function mostrarFlujoCaracteres(texto) {
 function limpiar(ventana) {
     if (ventana) window.jar.updateCode('')
     else window.visualizacionJar.updateCode('')
+}
+
+function mostrarEdicion(id, palabra) {
+    const idPalabra = document.getElementById('idPalabra')
+    const inputPalabra = document.getElementById('palabraEdicion')
+    idPalabra.value = id
+    inputPalabra.value = palabra
+    const mantenimientoPalabras = obtenerModal('mantenimientoPalabras')
+    mantenimientoPalabras.hide()
+    const edicion = obtenerModal('edicion')
+    edicion.show()
+}
+
+async function confirmarEliminacion(id) {
+    const respuesta = await confirm('¿Estás seguro de eliminar esta palabra?')
+    if (!respuesta) return
+    grid.eliminar(id)
+}
+
+async function llamarApi(method, url, params = false) {
+    const options = {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: params ? JSON.stringify(params) : '',
+    }
+    if (!params) delete options.body
+    return fetch(url, options)
+        .then((res) => res.json())
+        .catch((err) => {})
+}
+
+function obtenerModal(id) {
+    return new bootstrap.Modal(document.getElementById(id), {
+        keyboard: false,
+    })
 }
