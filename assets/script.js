@@ -2,6 +2,7 @@ const cargar = document.getElementById('cargar')
 const seleccionar = document.getElementById('seleccionar')
 const archivo = document.getElementById('archivo')
 const mostrarCaracteres = document.getElementById('mostrarCaracteres')
+const mostrarTokens = document.getElementById('mostrarTokens')
 const flujo = document.getElementById('flujo')
 const lineaColumnas = document.getElementById('lineaColumnas')
 const gridContainer = document.getElementById('gridContainer')
@@ -161,6 +162,12 @@ mostrarCaracteres.addEventListener('click', () => {
     mostrarFlujoCaracteres(codigo)
 })
 
+mostrarTokens.addEventListener('click', async () => {
+    const codigo = window.jar.toString()
+    const flujo = await validarPrograma(codigo)
+    window.visualizacionJar.updateCode(flujo)
+})
+
 editarPalabra.addEventListener('click', () => {
     const palabra = document.getElementById('palabraEdicion')
     const palabraId = document.getElementById('idPalabra')
@@ -302,4 +309,181 @@ function obtenerModal(id) {
     return new bootstrap.Modal(document.getElementById(id), {
         keyboard: false,
     })
+}
+
+async function validarPrograma(texto) {
+    const lineas = texto.split('\n')
+    let lexemas = []
+    lineas.forEach((linea, indice) => {
+        const numeroLinea = indice + 1
+        let numeroColumna = 0
+        let tabs = 0
+        let lexema = ''
+        for (var i = 0; i < linea.length; i++) {
+            numeroColumna = i + 1
+            const caracter = linea.charAt(i)
+            if (linea.length == numeroColumna) {
+                lexema += caracter
+
+                lexemas.push({
+                    lexema: lexema.trim(),
+                    linea: numeroLinea,
+                    columna: tabs != 0 ? numeroColumna + 4 * tabs : numeroColumna,
+                })
+                lexema = ''
+            }
+
+            if (caracter == ' ' || caracter == '\t') {
+                if (caracter == '\t') tabs++
+                if (lexema.trim() == '') {
+                    lexema = lexema.trim()
+                    continue
+                }
+
+                lexemas.push({
+                    lexema: lexema.trim(),
+                    linea: numeroLinea,
+                    columna: tabs != 0 ? numeroColumna - 1 + 4 * tabs : numeroColumna - 1,
+                })
+                lexema = ''
+            }
+
+            lexema += caracter
+        }
+    })
+
+    const caracteresEspeciales = [
+        { simbolo: '(', tipo: 'Signo Puntuacion' },
+        { simbolo: ')', tipo: 'Signo Puntuacion' },
+        { simbolo: '{', tipo: 'Signo Puntuacion' },
+        { simbolo: '}', tipo: 'Signo Puntuacion' },
+        { simbolo: ',', tipo: 'Signo Puntuacion' },
+        { simbolo: ';', tipo: 'Signo Puntuacion' },
+        { simbolo: ':=', tipo: 'Operadores' },
+        { simbolo: '>', tipo: 'Operadores' },
+        { simbolo: '<', tipo: 'Operadores' },
+        { simbolo: '<>', tipo: 'Operadores' },
+        { simbolo: '=', tipo: 'Operadores' },
+        { simbolo: '+', tipo: 'Operadores' },
+        { simbolo: '-', tipo: 'Operadores' },
+        { simbolo: '*', tipo: 'Operadores' },
+        { simbolo: '/', tipo: 'Operadores' },
+        { simbolo: '&&', tipo: 'Operadores' },
+        { simbolo: '||', tipo: 'Operadores' },
+        { simbolo: '"', tipo: 'String' },
+    ]
+    const palabrasReservadas = await obtenerPalabrasReservadas()
+    const lexemasSinComentarios = eliminarComentarios(lexemas)
+    if (!lexemasSinComentarios) return alert('Error en ejecución por comentarios sin cerrar')
+    lexemas = lexemasSinComentarios
+
+    for (lexema of lexemas) {
+        const { correcto, tipo } = await lexemaCorrecto(lexema.lexema, palabrasReservadas.data, caracteresEspeciales)
+        lexema.correcto = correcto
+        if (typeof tipo != 'undefined') lexema.tipo = tipo
+    }
+    let flujo = ''
+    lexemas.forEach((lexema) => {
+        if (lexema.correcto) flujo += `${lexema.lexema} - ${lexema.tipo}\n`
+        else flujo += `${lexema.lexema} - "Error Sintaxis" Lin ${lexema.linea} Col ${lexema.columna} \n`
+    })
+    return flujo
+}
+
+async function lexemaCorrecto(lexema, palabrasReservadas, caracteresEspeciales) {
+    if (!isNaN(lexema)) return { correcto: true, tipo: 'Numero' }
+    if (esPalabraReservada(lexema, palabrasReservadas)) return { correcto: true, tipo: 'Palabra Reservada' }
+    if (
+        esSignoPuntuacion(
+            lexema,
+            caracteresEspeciales.filter((c) => {
+                return c.tipo == 'Signo Puntuacion'
+            })
+        )
+    )
+        return { correcto: true, tipo: 'Signo de puntuacion' }
+    if (
+        esOperador(
+            lexema,
+            caracteresEspeciales.filter((c) => {
+                return c.tipo == 'Operadores'
+            })
+        )
+    )
+        return { correcto: true, tipo: 'Operador' }
+    if (
+        esString(
+            lexema,
+            caracteresEspeciales.filter((c) => {
+                return c.tipo == 'String'
+            })
+        )
+    )
+        return { correcto: true, tipo: 'String' }
+    if (esIdentificador(lexema)) return { correcto: true, tipo: 'Identificador' }
+    return { correcto: false }
+}
+
+function esPalabraReservada(lexema, palabrasReservadas) {
+    return Boolean(
+        palabrasReservadas.find((palabraReservada) => {
+            return palabraReservada.palabra_reservada == lexema
+        })
+    )
+}
+
+function esSignoPuntuacion(lexema, signosPuntuacion) {
+    return Boolean(
+        signosPuntuacion.find((signoPuntuacion) => {
+            return signoPuntuacion.simbolo == lexema
+        })
+    )
+}
+
+function esOperador(lexema, operadores) {
+    return Boolean(
+        operadores.find((operador) => {
+            return operador.simbolo == lexema
+        })
+    )
+}
+
+function esString(lexema, strings) {
+    return Boolean(
+        strings.find((string) => {
+            return string.simbolo == lexema
+        })
+    )
+}
+
+function esIdentificador(lexema) {
+    const regExpr = new RegExp('^[A-Za-z][A-Za-z0-9_]*$')
+    return regExpr.test(lexema)
+}
+
+function eliminarComentarios(lexemas) {
+    const comentariosAbiertos = lexemas.filter((lexema) => {
+        return lexema.lexema == '/*'
+    }).length
+    const comentariosCerrados = lexemas.filter((lexema) => {
+        return lexema.lexema == '*/'
+    }).length
+
+    if (comentariosAbiertos !== comentariosCerrados) return false
+
+    let lexemasSinComentarios = lexemas
+    for (let i = 1; i <= comentariosAbiertos; i++) {
+        abreComentario = lexemasSinComentarios.findIndex((x) => x.lexema === '/*')
+        cierraComentario = lexemasSinComentarios.findIndex((x) => x.lexema === '*/')
+        lexemasSinComentarios = lexemasSinComentarios.slice(0, abreComentario).concat(lexemasSinComentarios.slice(cierraComentario + 1))
+    }
+    return lexemasSinComentarios
+}
+
+async function obtenerCaracteresEspeciales(tipo = '') {
+    return await llamarApi('GET', `${base_url}/obtenerCaracteresEspeciales${tipo != '' ? '/' + tipo : ''}`).catch(() => [])
+}
+
+async function obtenerPalabrasReservadas() {
+    return await llamarApi('GET', `${base_url}/obtenerPalabrasReservadas`).catch(() => [])
 }
