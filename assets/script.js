@@ -639,20 +639,12 @@ function esIdentificador(lexema) {
 }
 
 function eliminarComentarios(lexemas) {
-    const comentariosAbiertos = lexemas.filter((lexema) => {
-        return lexema.lexema == '/*'
-    }).length
-    const comentariosCerrados = lexemas.filter((lexema) => {
-        return lexema.lexema == '*/'
-    }).length
-
-    if (comentariosAbiertos !== comentariosCerrados) return false
-
-    let lexemasSinComentarios = lexemas
-    for (let i = 1; i <= comentariosAbiertos; i++) {
-        abreComentario = lexemasSinComentarios.findIndex((x) => x.lexema === '/*')
-        cierraComentario = lexemasSinComentarios.findIndex((x) => x.lexema === '*/')
-        lexemasSinComentarios = lexemasSinComentarios.slice(0, abreComentario).concat(lexemasSinComentarios.slice(cierraComentario + 1))
+    lexemasSinComentarios = []
+    comentario = 0
+    for (i = 0; i <= lexemas.length - 1; i++) {
+        if (lexemas[i].lexema.startsWith('/*')) comentario++
+        if (comentario == 0) lexemasSinComentarios.push(lexemas[i])
+        if (lexemas[i].lexema.endsWith('*/')) comentario = comentario == 0 ? 0 : comentario - 1
     }
     return lexemasSinComentarios
 }
