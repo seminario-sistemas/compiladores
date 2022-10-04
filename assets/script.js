@@ -3,6 +3,8 @@ const seleccionar = document.getElementById('seleccionar')
 const archivo = document.getElementById('archivo')
 const mostrarCaracteres = document.getElementById('mostrarCaracteres')
 const mostrarTokens = document.getElementById('mostrarTokens')
+const bdTokens = document.getElementById('bdTokens')
+const simbolos = document.getElementById('simbolos')
 const flujo = document.getElementById('flujo')
 const lineaColumnas = document.getElementById('lineaColumnas')
 const gridContainer = document.getElementById('gridContainer')
@@ -166,6 +168,16 @@ mostrarTokens.addEventListener('click', async () => {
     const codigo = window.jar.toString()
     const flujo = await validarPrograma(codigo)
     window.visualizacionJar.updateCode(flujo)
+})
+
+bdTokens.addEventListener('click', async () => {
+    const codigo = window.jar.toString()
+    await grabarTokens(codigo)
+})
+
+simbolos.addEventListener('click', async () => {
+    const codigo = window.jar.toString()
+    await grabarSimbolos(codigo)
 })
 
 editarPalabra.addEventListener('click', () => {
@@ -384,10 +396,175 @@ async function validarPrograma(texto) {
     }
     let flujo = ''
     lexemas.forEach((lexema) => {
-        if (lexema.correcto) flujo += `${lexema.lexema} - ${lexema.tipo}\n`
-        else flujo += `${lexema.lexema} - "Error Sintaxis" Lin ${lexema.linea} Col ${lexema.columna} \n`
+        if (lexema.correcto) {
+            flujo += `${lexema.lexema} - ${lexema.tipo}\n`
+        } else flujo += `${lexema.lexema} - "Error Sintaxis" Lin ${lexema.linea} Col ${lexema.columna} \n`
     })
     return flujo
+}
+
+async function grabarTokens(texto) {
+    if (texto.trim() == '') return
+    const lineas = texto.split('\n')
+    let lexemas = []
+    lineas.forEach((linea, indice) => {
+        const numeroLinea = indice + 1
+        let numeroColumna = 0
+        let tabs = 0
+        let lexema = ''
+        for (var i = 0; i < linea.length; i++) {
+            numeroColumna = i + 1
+            const caracter = linea.charAt(i)
+            if (linea.length == numeroColumna) {
+                lexema += caracter
+
+                lexemas.push({
+                    lexema: lexema.trim(),
+                    linea: numeroLinea,
+                    columna: tabs != 0 ? numeroColumna + 4 * tabs : numeroColumna,
+                })
+                lexema = ''
+            }
+
+            if (caracter == ' ' || caracter == '\t') {
+                if (caracter == '\t') tabs++
+                if (lexema.trim() == '') {
+                    lexema = lexema.trim()
+                    continue
+                }
+
+                lexemas.push({
+                    lexema: lexema.trim(),
+                    linea: numeroLinea,
+                    columna: tabs != 0 ? numeroColumna - 1 + 4 * tabs : numeroColumna - 1,
+                })
+                lexema = ''
+            }
+
+            lexema += caracter
+        }
+    })
+
+    const caracteresEspeciales = [
+        { simbolo: '(', tipo: 'Signo Puntuacion', descripcion: 'Parétesis que abre' },
+        { simbolo: ')', tipo: 'Signo Puntuacion', descripcion: 'Parétesis que cierra' },
+        { simbolo: '{', tipo: 'Signo Puntuacion', descripcion: 'Llave que abre' },
+        { simbolo: '}', tipo: 'Signo Puntuacion', descripcion: 'Llave que cierra' },
+        { simbolo: ',', tipo: 'Signo Puntuacion', descripcion: 'Coma' },
+        { simbolo: ';', tipo: 'Signo Puntuacion', descripcion: 'Punto y coma' },
+        { simbolo: ':=', tipo: 'Operadores', descripcion: 'Asignación' },
+        { simbolo: '>', tipo: 'Operadores', descripcion: 'Mayor que' },
+        { simbolo: '<', tipo: 'Operadores', descripcion: 'Menor que' },
+        { simbolo: '<>', tipo: 'Operadores', descripcion: 'Diferente' },
+        { simbolo: '=', tipo: 'Operadores', descripcion: 'Igual' },
+        { simbolo: '+', tipo: 'Operadores', descripcion: 'Más' },
+        { simbolo: '-', tipo: 'Operadores', descripcion: 'Menos' },
+        { simbolo: '*', tipo: 'Operadores', descripcion: 'Multiplicación' },
+        { simbolo: '/', tipo: 'Operadores', descripcion: 'División' },
+        { simbolo: '&&', tipo: 'Operadores', descripcion: 'Conjunción' },
+        { simbolo: '||', tipo: 'Operadores', descripcion: 'Disyunción' },
+        { simbolo: '"', tipo: 'String', descripcion: 'Comillas dobles' },
+    ]
+    const palabrasReservadas = await obtenerPalabrasReservadas()
+    const lexemasSinComentarios = eliminarComentarios(lexemas)
+    if (!lexemasSinComentarios) return alert('Error en ejecución por comentarios sin cerrar')
+    lexemas = lexemasSinComentarios
+
+    for (lexema of lexemas) {
+        const { correcto, tipo } = await lexemaCorrecto(lexema.lexema, palabrasReservadas.data, caracteresEspeciales)
+        lexema.correcto = correcto
+        lexema.tipo = !correcto ? 'Error' : typeof tipo != 'undefined' ? tipo : 'Indefinido'
+    }
+    lexemas.forEach((lexema) => {
+        lexema.descripcion = lexema.correcto
+            ? caracteresEspeciales.find((e) => e.simbolo == lexema.lexema)?.descripcion || lexema.tipo
+            : `${lexema.lexema} - "Error Sintaxis" Lin ${lexema.linea} Col ${lexema.columna}`
+    })
+
+    await llamarApi('POST', `${base_url}/grabarTokens`, { lexemas })
+    alert('Tokens almacenados')
+}
+
+async function grabarSimbolos(texto) {
+    if (texto.trim() == '') return
+    const lineas = texto.split('\n')
+    let lexemas = []
+    lineas.forEach((linea, indice) => {
+        const numeroLinea = indice + 1
+        let numeroColumna = 0
+        let tabs = 0
+        let lexema = ''
+        for (var i = 0; i < linea.length; i++) {
+            numeroColumna = i + 1
+            const caracter = linea.charAt(i)
+            if (linea.length == numeroColumna) {
+                lexema += caracter
+
+                lexemas.push({
+                    lexema: lexema.trim(),
+                    linea: numeroLinea,
+                    columna: tabs != 0 ? numeroColumna + 4 * tabs : numeroColumna,
+                })
+                lexema = ''
+            }
+
+            if (caracter == ' ' || caracter == '\t') {
+                if (caracter == '\t') tabs++
+                if (lexema.trim() == '') {
+                    lexema = lexema.trim()
+                    continue
+                }
+
+                lexemas.push({
+                    lexema: lexema.trim(),
+                    linea: numeroLinea,
+                    columna: tabs != 0 ? numeroColumna - 1 + 4 * tabs : numeroColumna - 1,
+                })
+                lexema = ''
+            }
+
+            lexema += caracter
+        }
+    })
+
+    const caracteresEspeciales = [
+        { simbolo: '(', tipo: 'Signo Puntuacion', descripcion: 'Parétesis que abre' },
+        { simbolo: ')', tipo: 'Signo Puntuacion', descripcion: 'Parétesis que cierra' },
+        { simbolo: '{', tipo: 'Signo Puntuacion', descripcion: 'Llave que abre' },
+        { simbolo: '}', tipo: 'Signo Puntuacion', descripcion: 'Llave que cierra' },
+        { simbolo: ',', tipo: 'Signo Puntuacion', descripcion: 'Coma' },
+        { simbolo: ';', tipo: 'Signo Puntuacion', descripcion: 'Punto y coma' },
+        { simbolo: ':=', tipo: 'Operadores', descripcion: 'Asignación' },
+        { simbolo: '>', tipo: 'Operadores', descripcion: 'Mayor que' },
+        { simbolo: '<', tipo: 'Operadores', descripcion: 'Menor que' },
+        { simbolo: '<>', tipo: 'Operadores', descripcion: 'Diferente' },
+        { simbolo: '=', tipo: 'Operadores', descripcion: 'Igual' },
+        { simbolo: '+', tipo: 'Operadores', descripcion: 'Más' },
+        { simbolo: '-', tipo: 'Operadores', descripcion: 'Menos' },
+        { simbolo: '*', tipo: 'Operadores', descripcion: 'Multiplicación' },
+        { simbolo: '/', tipo: 'Operadores', descripcion: 'División' },
+        { simbolo: '&&', tipo: 'Operadores', descripcion: 'Conjunción' },
+        { simbolo: '||', tipo: 'Operadores', descripcion: 'Disyunción' },
+        { simbolo: '"', tipo: 'String', descripcion: 'Comillas dobles' },
+    ]
+    const palabrasReservadas = await obtenerPalabrasReservadas()
+    const lexemasSinComentarios = eliminarComentarios(lexemas)
+    if (!lexemasSinComentarios) return alert('Error en ejecución por comentarios sin cerrar')
+    lexemas = lexemasSinComentarios
+
+    for (lexema of lexemas) {
+        const { correcto, tipo } = await lexemaCorrecto(lexema.lexema, palabrasReservadas.data, caracteresEspeciales)
+        lexema.correcto = correcto
+        lexema.tipo = !correcto ? 'Error' : typeof tipo != 'undefined' ? tipo : 'Indefinido'
+    }
+    lexemas.forEach((lexema) => {
+        lexema.descripcion = lexema.correcto
+            ? caracteresEspeciales.find((e) => e.simbolo == lexema.lexema)?.descripcion || lexema.tipo
+            : `${lexema.lexema} - "Error Sintaxis" Lin ${lexema.linea} Col ${lexema.columna}`
+    })
+    lexemas = lexemas.filter((lexema) => lexema.tipo == 'Identificador')
+    await llamarApi('POST', `${base_url}/grabarSimbolos`, { lexemas })
+    alert('Simbolos almacenados')
 }
 
 async function lexemaCorrecto(lexema, palabrasReservadas, caracteresEspeciales) {
@@ -478,10 +655,6 @@ function eliminarComentarios(lexemas) {
         lexemasSinComentarios = lexemasSinComentarios.slice(0, abreComentario).concat(lexemasSinComentarios.slice(cierraComentario + 1))
     }
     return lexemasSinComentarios
-}
-
-async function obtenerCaracteresEspeciales(tipo = '') {
-    return await llamarApi('GET', `${base_url}/obtenerCaracteresEspeciales${tipo != '' ? '/' + tipo : ''}`).catch(() => [])
 }
 
 async function obtenerPalabrasReservadas() {
